@@ -9,29 +9,30 @@ SynonymsTokenizer::SynonymsTokenizer(SynonymsTokenizer::synonyms_map&& synonyms)
   : _synonyms(std::move(synonyms)) {}
 
 bool SynonymsTokenizer::next() {
-  if (_term_eof) {
+  if (_curr == _end) {
     return false;
   }
-  _term_eof = true;
+
+  auto& inc = std::get<IncAttr>(_attrs);
+  inc.value = _begin == _curr;
+
+  auto& term = std::get<TermAttr>(_attrs);
+  term.value = ViewCast<byte_type>(*_curr++);
   return true;
 }
 
 bool SynonymsTokenizer::reset(std::string_view data) {
   auto& offset = std::get<irs::OffsAttr>(_attrs);
   offset.start = 0;
-  offset.end = uint32_t(data.size());
-  auto& term = std::get<TermAttr>(_attrs);
-  term.value = ViewCast<byte_type>(data);
+  offset.end = data.size();
 
-  const bool contains = _synonyms.contains(data);
-  _term_eof = contains;
-
-  if (contains) {
-    const auto synonyms = _synonyms[data];
-    if (data != (*synonyms)[0]) {
-      auto& inc = std::get<IncAttr>(_attrs);
-      inc.value = 0;
-    }
+  if (const auto it = _synonyms.find(data); it == _synonyms.end()) {
+    _holder = data;
+    _begin = _curr = &_holder;
+    _end = _curr + 1;
+  } else {
+    _begin = _curr = it->second->data();
+    _end = _curr + it->second->size();
   }
 
   return true;

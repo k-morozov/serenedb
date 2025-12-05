@@ -29,7 +29,12 @@ class SynonymsTokenizer final : public TypedAnalyzer<SynonymsTokenizer>,
 
   using attributes = std::tuple<IncAttr, OffsAttr, TermAttr>;
   attributes _attrs;
-  bool _term_eof = true;
+
+  std::string_view* _begin{};
+  std::string_view* _curr{};
+  std::string_view* _end{};
+
+  std::string_view _holder{};
 };
 
 }  // namespace irs::analysis
