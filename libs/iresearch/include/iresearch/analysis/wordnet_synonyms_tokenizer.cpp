@@ -23,10 +23,10 @@
 #include <absl/strings/ascii.h>
 #include <absl/strings/str_replace.h>
 #include <absl/strings/str_split.h>
+#include <re2/re2.h>
 
 #include <iresearch/analysis/pipeline_tokenizer.hpp>
 #include <iresearch/analysis/token_attributes.hpp>
-#include <regex>
 #include <string_view>
 #include <utility>
 
@@ -36,27 +36,32 @@ namespace {
 
 constexpr static size_t kWordnetCountParams = 6;
 
-const std::regex kWordnetPattern(R"(s\(([^)]*)\)\.)");
+const RE2 kWordnetPattern(R"(s\(([^)]*)\)\.)");
 
-bool RegexWordnet(const std::string_view s_list,
-                  std::match_results<std::string_view::iterator>& list_parts) {
+bool RegexWordnet(const std::string_view s_list, std::string_view* result) {
   if (s_list.length() <= 2) {
     return false;
   }
 
-  return std::regex_match(s_list.begin(), s_list.end(), list_parts,
-                          kWordnetPattern);
+  re2::StringPiece input(s_list.data(), s_list.size());
+  re2::StringPiece params;
+
+  if (!RE2::FullMatch(input, kWordnetPattern, &params)) {
+    return false;
+  }
+
+  *result = params;
+  return true;
 }
 
 sdb::ResultOr<std::vector<std::string_view>> ParseParams(
   const std::string_view line) {
-  std::match_results<std::string_view::iterator> match;
+  std::string_view params;
 
-  if (!RegexWordnet(line, match)) {
+  if (!RegexWordnet(line, &params)) {
     return std::unexpected<sdb::Result>{std::in_place,
                                         sdb::ERROR_BAD_PARAMETER};
   }
-  const std::string_view params(match[1].first, match[1].second);
 
   std::vector<std::string_view> outputs(absl::StrSplit(params, ','));
   if (outputs.size() != kWordnetCountParams) {

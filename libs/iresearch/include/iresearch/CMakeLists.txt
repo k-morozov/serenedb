@@ -202,6 +202,7 @@ target_link_libraries(
     PUBLIC ${FASTTEXT_LIBRARY_STATIC}
     PUBLIC ${SIMD_LIBRARY_STATIC}
     PUBLIC ${FAISS_LIB}
+    PUBLIC re2
     PRIVATE lz4_static
     PRIVATE text
     PRIVATE stemmer-static
