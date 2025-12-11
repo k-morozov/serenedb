@@ -261,7 +261,7 @@ TEST(wordnet_synonyms_tests, parsing_some_lines) {
 TEST(wordnet_synonyms_tests, parsing_homonym_diffrent_synset_order) {
   std::string_view data0(
     "s(100000001,1,'word0',v,1,0).\ns(100000002,2,'word0',v,1,0).\n\ns("
-    "100000003,3,'word0',v,1,0).\ns(100000004,1,'word0',v,1,0).");
+    "100000004,3,'word0',v,1,0).\ns(100000003,1,'word0',v,1,0).");
   auto result = WordnetSynonymsTokenizer::Parse(data0);
   ASSERT_TRUE(result);
   const auto input = *result;

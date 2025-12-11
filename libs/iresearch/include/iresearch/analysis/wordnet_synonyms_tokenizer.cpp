@@ -124,6 +124,11 @@ WordnetSynonymsTokenizer::Parse(const std::string_view input) {
 
     last_syn_set_id = syn_set_id;
   }
+
+  for (auto& [_, synset] : mapping) {
+    // expect that we don't have duplicate.
+    std::sort(synset.begin(), synset.end());
+  }
   return mapping;
 }
 
