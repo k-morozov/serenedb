@@ -31,26 +31,21 @@
 #include <utility>
 
 namespace irs::analysis {
-
 namespace {
 
-constexpr static size_t kWordnetCountParams = 6;
+constexpr size_t kWordnetCountParams = 6;
 
 const RE2 kWordnetPattern(R"(s\(([^)]*)\)\.)");
 
-bool RegexWordnet(const std::string_view s_list, std::string_view* result) {
-  if (s_list.length() <= 2) {
+bool RegexWordnet(const std::string_view input, std::string_view* result) {
+  if (input.length() <= 2) {
     return false;
   }
 
-  re2::StringPiece input(s_list.data(), s_list.size());
-  re2::StringPiece params;
-
-  if (!RE2::FullMatch(input, kWordnetPattern, &params)) {
+  if (!RE2::FullMatch(input, kWordnetPattern, result)) {
     return false;
   }
 
-  *result = params;
   return true;
 }
 
@@ -63,7 +58,7 @@ sdb::ResultOr<std::vector<std::string_view>> ParseParams(
                                         sdb::ERROR_BAD_PARAMETER};
   }
 
-  std::vector<std::string_view> outputs(absl::StrSplit(params, ','));
+  std::vector<std::string_view> outputs = absl::StrSplit(params, ',');
   if (outputs.size() != kWordnetCountParams) {
     return std::unexpected<sdb::Result>{std::in_place,
                                         sdb::ERROR_BAD_PARAMETER};
@@ -79,13 +74,13 @@ WordnetSynonymsTokenizer::Parse(const std::string_view input) {
   std::string_view last_syn_set_id = "";
   size_t line_number{};
 
-  SynonymsGroups synset;
   SynonymsMap mapping;
 
   for (const auto& line : lines) {
     line_number++;
-    if (line.empty())
+    if (line.empty()) {
       continue;
+    }
 
     const auto params = ParseParams(line);
     if (params.error().is(sdb::ERROR_BAD_PARAMETER)) {
@@ -95,13 +90,6 @@ WordnetSynonymsTokenizer::Parse(const std::string_view input) {
     }
 
     const std::string_view syn_set_id = (*params)[0];
-
-    // I couldn't find explicit guarantees that SynSet IDs must appear
-    // sequentially, but popular implementations rely on this assumption.
-    if (last_syn_set_id != syn_set_id) {
-      synset.push_back(syn_set_id);
-    }
-
     const std::string_view raw_synonym = (*params)[2];
 
     if (raw_synonym.size() < 3 || raw_synonym.front() != '\'' ||
@@ -114,20 +102,19 @@ WordnetSynonymsTokenizer::Parse(const std::string_view input) {
     std::string synonym = absl::StrReplaceAll(
       raw_synonym.substr(1, raw_synonym.size() - 2), {{"''", "'"}});
 
-    if (synonym.empty()) {
-      return std::unexpected<sdb::Result>{std::in_place,
-                                          sdb::ERROR_BAD_PARAMETER,
-                                          "Failed parse line ", line_number};
-    }
-
-    mapping[synonym].push_back(synset.back());
+    mapping[synonym].push_back(syn_set_id);
 
     last_syn_set_id = syn_set_id;
   }
 
-  for (auto& [_, synset] : mapping) {
+  for (auto& [word, synset] : mapping) {
     // expect that we don't have duplicate.
-    std::sort(synset.begin(), synset.end());
+    absl::c_sort(synset);
+    if (auto it = absl::c_adjacent_find(synset); it != synset.end()) {
+      return std::unexpected<sdb::Result>{
+        std::in_place, sdb::ERROR_BAD_PARAMETER,
+        "Duplicate for " + word + ": synset ", *it};
+    }
   }
   return mapping;
 }

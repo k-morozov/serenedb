@@ -283,7 +283,10 @@ TEST(wordnet_synonyms_tests, parsing_broken_synonym) {
   for (std::string_view data0 : {std::string("s(100000002,1,come,v,1,0)."),
                                  std::string("s(100000002,1,'come,v,1,0)."),
                                  std::string("s(100000002,1,come',v,1,0)."),
-                                 std::string("s(100000002,1,'',v,1,0).")}) {
+                                 std::string("s(100000002,1,'',v,1,0)."),
+                                 std::string("s(100000002,1,,v,1,0)."),
+                                 std::string("s(100000002,1, ,v,1,0)."),
+                                 std::string("s(100000002,1,a,v,1,0).")}) {
     auto result = WordnetSynonymsTokenizer::Parse(data0);
     ASSERT_TRUE(result.error().is(sdb::ERROR_BAD_PARAMETER));
     ASSERT_EQ(result.error().errorMessage(), "Failed parse line 1");
@@ -309,4 +312,14 @@ TEST(wordnet_synonyms_tests, parsing_broken_line_less_param) {
   auto result = WordnetSynonymsTokenizer::Parse(data0);
   ASSERT_TRUE(result.error().is(sdb::ERROR_BAD_PARAMETER));
   ASSERT_EQ(result.error().errorMessage(), "Failed parse line 1");
+}
+
+TEST(wordnet_synonyms_tests, parsing_broken_order_synsets) {
+  std::string_view data0(
+    "s(100000002,1,'word1',v,1,0).\ns(100000003,1,'word2',v,1,0).\ns(100000002,"
+    "1,'word1',v,1,0).\n");
+  auto result = WordnetSynonymsTokenizer::Parse(data0);
+  ASSERT_TRUE(result.error().is(sdb::ERROR_BAD_PARAMETER));
+  ASSERT_EQ(result.error().errorMessage(),
+            "Duplicate for word1: synset 100000002");
 }
