@@ -71,7 +71,6 @@ sdb::ResultOr<WordnetSynonymsTokenizer::SynonymsMap>
 WordnetSynonymsTokenizer::Parse(const std::string_view input) {
   std::vector<std::string_view> lines = absl::StrSplit(input, '\n');
 
-  std::string_view last_syn_set_id = "";
   size_t line_number{};
 
   SynonymsMap mapping;
@@ -103,8 +102,6 @@ WordnetSynonymsTokenizer::Parse(const std::string_view input) {
       raw_synonym.substr(1, raw_synonym.size() - 2), {{"''", "'"}});
 
     mapping[synonym].push_back(syn_set_id);
-
-    last_syn_set_id = syn_set_id;
   }
 
   for (auto& [word, synset] : mapping) {
